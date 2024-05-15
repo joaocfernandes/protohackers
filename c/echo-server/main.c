@@ -14,7 +14,7 @@ void handle_client(int client_socket) {
   char buffer[BUFFER_SIZE+1];
   ssize_t bytes_received = 0;
 
-  buffer[bytes_received] = '\0';
+  buffer[BUFFER_SIZE] = '\0';
   printf("Handling client.\n");
 
 
