@@ -1,32 +1,43 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net"
 )
 
 const PORT = ":8080"
 
+type Payload struct {
+	Method string `json:"method"`
+	Number int    `json:"number"`
+}
+
 func handleConnection(conn net.Conn) {
 	defer conn.Close()
 
-	buffer := make([]byte, 2048)
+	decoder := json.NewDecoder(conn)
 
 	for {
-		// Read data from the client
-		n, err := conn.Read(buffer)
-		if err != nil {
-			fmt.Println("Error reading:", err.Error())
+		//read data from the client until it ends
+		var payload Payload
+
+		if err := decoder.Decode(&payload); err != nil {
+			fmt.Println("Error decoding JSON:", err)
 			return
 		}
 
-		// Echo the received data back to the client
-		_, err = conn.Write(buffer[:n])
+		fmt.Println("Decoded payload:", payload)
+
+		// Send a message back
+		_, err := conn.Write([]byte("bla"))
 		if err != nil {
 			fmt.Println("Error writing:", err.Error())
 			return
 		}
+
 	}
+
 }
 
 func main() {
@@ -37,7 +48,6 @@ func main() {
 		return
 	}
 
-	// Clean up when the server is stopped
 	defer listener.Close()
 
 	fmt.Println("Server started.\n Listening on :", PORT)
