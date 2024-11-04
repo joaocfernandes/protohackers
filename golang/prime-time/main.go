@@ -1,39 +1,80 @@
+// https://protohackers.com/problem/1
+
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"net"
+
+	"github.com/fxtlabs/primes"
 )
 
 const PORT = ":8080"
 
-type Payload struct {
+type Request struct {
 	Method string `json:"method"`
 	Number int    `json:"number"`
+}
+
+type Response struct {
+	Method string `json:"method"`
+	Prime  bool   `json:"prime"`
+}
+
+func responseOnError(conn net.Conn) {
+	// Send a error message back
+	_, err := conn.Write([]byte("ERROR"))
+	if err != nil {
+		fmt.Println("Error writing:", err.Error())
+	}
+	return
 }
 
 func handleConnection(conn net.Conn) {
 	defer conn.Close()
 
-	decoder := json.NewDecoder(conn)
+	scanner := bufio.NewScanner(conn)
 
-	for {
-		//read data from the client until it ends
-		var payload Payload
+	//read data from the client until it ends
+	for scanner.Scan() {
+		var payload Request
 
-		if err := decoder.Decode(&payload); err != nil {
+		line := scanner.Text()
+
+		if err := json.Unmarshal([]byte(line), &payload); err != nil {
 			fmt.Println("Error decoding JSON:", err)
-			return
+			responseOnError(conn)
 		}
 
 		fmt.Println("Decoded payload:", payload)
 
+		// Validate the method field
+		if payload.Method != "isPrime" {
+			fmt.Println("Invalid method:", payload.Method)
+			responseOnError(conn)
+		}
+
+		// Let's leave the primality testing for another day :)
+		response := Response{Method: "isPrime", Prime: primes.IsPrime(payload.Number)}
+
+		// Marshal the response to JSON
+		responseData, err := json.Marshal(response)
+		if err != nil {
+			fmt.Println("Error encoding JSON response:", err)
+			return
+		}
+
 		// Send a message back
-		_, err := conn.Write([]byte("bla"))
+		_, err = conn.Write(append(responseData, '\n'))
 		if err != nil {
 			fmt.Println("Error writing:", err.Error())
 			return
+		}
+
+		if err := scanner.Err(); err != nil {
+			fmt.Println("Error reading from connection:", err)
 		}
 
 	}
